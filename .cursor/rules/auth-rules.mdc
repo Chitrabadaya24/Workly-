@@ -1,0 +1,45 @@
+---
+description: JWT auth, cookies, sessions, mobile handoff, and route guards (critical)
+alwaysApply: true
+---
+
+# Auth Rules
+
+Reference: `Documents/decisions/mobile-session-strategy.md`, `Documents/MOBILE_WEB_SESSION_IMPLEMENTATION.md`
+
+## Stack
+
+- Custom JWT (`ACCESS_TOKEN_SECRET` / `REFRESH_TOKEN_SECRET`) — not Firebase for login.
+- Firebase is push-only (FCM) on mobile.
+
+## Web
+
+- httpOnly cookies: `AccessToken`, `RefreshToken`.
+- `axios.defaults.withCredentials = true` via `setupAxios(axios)` in `main.jsx`.
+- User object in localStorage: `{VITE_APP_NAME}-auth-v{version}` — never store refresh tokens there.
+- Route guard: `RequireAuth` → `/auth/login`.
+- Bootstrap: `GET /users/tenant-bootstrap` (non-blocking).
+
+## Mobile
+
+- Bearer token in memory + Expo SecureStore (`augmentik.mobile.*` keys).
+- Refresh via `/users/refresh-access-token`; clear session on 401 after failed refresh.
+- Device headers on every request: `x-device-id`, `x-app-platform`, `x-app-version`.
+- Portal handoff: `/users/mobile-web-session/create|verify` + WebView `/mobile-entry?token=&tenant=&handoff=`.
+
+## Backend
+
+- `VerifyJwt` middleware accepts cookie or Bearer token.
+- Production cookies: `secure` + `sameSite: 'none'` for cross-subdomain auth.
+
+## Do's
+
+- Extend `JWTProvider` / `AuthContext` — don't add parallel auth stacks.
+- Normalize API base URL to avoid `/api/api/` duplication.
+- Use `removeAuth` / `clearAllLocalAuth` on logout.
+
+## Don'ts
+
+- Don't skip `withCredentials` on auth or handoff calls.
+- Don't put JWT secrets in frontend or mobile env.
+- Don't store refresh tokens in localStorage on web.

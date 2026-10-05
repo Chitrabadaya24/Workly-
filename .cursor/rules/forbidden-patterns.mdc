@@ -1,0 +1,47 @@
+---
+description: Anti-patterns that must never be introduced in ProjectX
+alwaysApply: true
+---
+
+# Forbidden Patterns
+
+If you recognize any pattern below, **do not implement it**. Use the referenced rule or ADR instead.
+
+## Tenant & data
+
+- ❌ Direct `mongoose.connection.useDb()` in controllers — use `getTenantModel` / model routing.
+- ❌ Trusting `tenantId`, `tenantDbName`, or subdomain from request body/query to select DB.
+- ❌ Cross-tenant queries or emits without `tenantDbName` in room/event options.
+- ❌ Disabling cookie/header tenant mismatch checks.
+
+## Auth & security
+
+- ❌ Skipping `VerifyJwt` on protected REST routes or upload/download handlers.
+- ❌ Storing refresh tokens in `localStorage` (web) or `AsyncStorage` (mobile).
+- ❌ New parallel login/session stacks instead of extending `JWTProvider` / `AuthContext`.
+- ❌ Committing `.env`, Firebase admin SDK JSON, or service account keys.
+
+## Files
+
+- ❌ Public unauthenticated access to `/uploads/*` in production.
+- ❌ Filesystem reads using unsanitized client paths (must use `path.basename`, allowed categories).
+
+## Frontend & mobile
+
+- ❌ Hardcoded hex/rgb colors when `--ax-*` or Shadcn tokens exist.
+- ❌ Duplicate axios instances — use `setupAxios` (web) or `httpClient` (mobile).
+- ❌ Heavy business logic, permission checks, or tenant resolution inside JSX components.
+- ❌ Polling aggressively when Socket.IO is connected.
+
+## Database & jobs
+
+- ❌ Unbounded `find()` without `limit`/pagination on list endpoints or jobs.
+- ❌ Sequential `await` in loops over large recipient/tenant lists when batching is possible.
+- ❌ Scheduler/reminder jobs without explicit `runWithTenantContext(tenantDbName, ...)`.
+- ❌ Non-idempotent cron jobs that duplicate notifications on retry.
+
+## Realtime
+
+- ❌ Socket connections without JWT + tenant resolution (mirror HTTP policy).
+- ❌ Emitting to global `user:{id}` rooms when `tenantDbName` is known — use `tenant:{db}:user:{id}`.
+- ❌ Duplicate `useRealtimeEvent` subscriptions for the same event without cleanup.

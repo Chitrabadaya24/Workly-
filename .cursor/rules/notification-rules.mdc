@@ -1,0 +1,44 @@
+---
+description: In-app, browser, email, and Expo push notification channels (scoped)
+globs: Project-X-Backend/src/modules/notifications/**,Project-X-Backend/src/services/notification.service.js,Project-X-Backend/src/services/expo-push.service.js,Project-X-Backend/src/services/scheduler.service.js,Project-X-Frontend/src/hooks/useBrowserNotifications.js,Project-X-Frontend/src/services/browserNotification.service.js,Project-X-Mobile/src/notifications/**,Documents/BROWSER_NOTIFICATIONS_SETUP.md,Documents/TASK_EMAIL_NOTIFICATIONS.md
+alwaysApply: false
+---
+
+# Notification Rules
+
+Reference: `Documents/decisions/notification-engine.md`, `Documents/BROWSER_NOTIFICATIONS_SETUP.md`, `Documents/TASK_EMAIL_NOTIFICATIONS.md`
+
+## Channels
+
+| Channel | Location | Trigger |
+|---------|----------|---------|
+| In-app DB | `modules/notifications/notification.service.js` | Scheduler, task events, realtime |
+| Browser | `useBrowserNotifications.js` + `browserNotification.service.js` | Realtime `notification.created` + polling fallback |
+| Email | `services/notification.service.js` | Task create/reminder via SMTP |
+| Mobile push | `services/expo-push.service.js` | Expo tokens in tenant `mobile_devices` |
+
+## Flow
+
+1. Scheduler or domain event creates in-app notification (tenant DB).
+2. Realtime emits `notification.created` to connected clients.
+3. Browser hook shows native alert if permission granted.
+4. Email/push sent asynchronously — failures must not block primary action.
+
+## Conventions
+
+- Jobs/schedulers: see `scheduler-rules.mdc` for tenant context and idempotency.
+- Realtime: `notification.created` via `emitToUser` — see `realtime-rules.mdc`.
+- Use `resolveDeliverableRecipients` before sending to users.
+- Frontend polls only when realtime disconnected (`refetchInterval` fallback).
+
+## Do's
+
+- De-duplicate browser alerts via `seenNotificationIdsRef`.
+- Use `enqueueExpoPushNotification` — requires `EXPO_ACCESS_TOKEN`.
+- Log email/push failures without throwing from task create/update.
+
+## Don'ts
+
+- Don't send push without resolved tenant DB context.
+- Don't block task CRUD on notification delivery failure.
+- Don't show duplicate browser notifications for the same `_id`.

@@ -1,0 +1,41 @@
+---
+description: Query, frontend polling, and caching performance conventions (scoped)
+globs: Project-X-Backend/src/**/*.service.js,Project-X-Frontend/src/pages/**,Project-X-Frontend/src/hooks/**,Project-X-Frontend/src/providers/**,Project-X-Mobile/src/**
+alwaysApply: false
+---
+
+# Performance Rules
+
+## Backend
+
+- Prefer `.lean()` + `.select()` over returning full Mongoose docs.
+- Limit list endpoints with pagination or `limit` params (notifications default: 50).
+- Batch push/email sends — don't loop sequential awaits for large recipient lists.
+- Background jobs: see `scheduler-rules.mdc` for cron idempotency and batching.
+- Tenant connection cache TTL: 1 hour (`tenant-connection-manager.service.js`).
+
+## Frontend
+
+- React Query: set `refetchInterval` only when realtime is disconnected.
+- Use `useMemo` / `useCallback` for expensive derived data in large views (DataGrid, WorkAI).
+- Prefer realtime events (`useRealtimeEvent`) over aggressive polling.
+- Lazy-load heavy page modules where routes already support code splitting.
+- Debounce search/filter inputs on listing pages.
+
+## Mobile
+
+- Shared `apiClient` with 20s timeout — don't duplicate axios instances.
+- Avoid refetching on every focus unless data is stale.
+- WebView portal: load handoff URL once; don't reload on minor state changes.
+
+## Do's
+
+- Add DB indexes when adding new query filters or sort fields.
+- Invalidate specific React Query keys — not entire cache.
+- Profile N+1 populate patterns before shipping list endpoints.
+
+## Don'ts
+
+- Don't poll every 30s when Socket.IO is connected.
+- Don't fetch unbounded lists without limit/pagination.
+- Don't load full relation trees when a summary field suffices.

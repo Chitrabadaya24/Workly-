@@ -1,0 +1,41 @@
+---
+description: Impact analysis and incremental refactor requirements
+globs: Project-X-Backend/**,Project-X-Frontend/**,Project-X-Mobile/**
+alwaysApply: false
+---
+
+# Refactor Safety
+
+Before structural or cross-cutting refactors, produce a brief impact analysis. Prefer incremental refactors over full rewrites.
+
+## Required impact checklist
+
+| Area | Questions |
+|------|-----------|
+| **Tenant** | Does this change resolution, DB routing, or cookie/header policy? Affect all tenants? |
+| **Mobile** | Break Expo auth, SecureStore, tenant header, portal WebView handoff, or push? |
+| **Auth** | Change JWT/cookie flow, refresh, impersonation, or mobile-web-session? |
+| **Notifications** | Affect in-app, email, browser, or Expo push delivery or deduplication? |
+| **Realtime** | Change socket auth, room names, event names, or client subscriptions? |
+| **Backward compat** | Will existing clients/API consumers break without coordinated deploy? |
+
+## Refactor principles
+
+- **Incremental** — Ship in small PRs; one concern per change when possible.
+- **Feature flags / env gates** — Use existing env patterns before ripping out legacy paths.
+- **Parity** — If backend changes, check web (`setupAxios`), mobile (`httpClient`), and docs.
+- **No silent breaks** — Deprecate first; remove only when explicitly instructed.
+- **Test tenant boundary** — Verify two tenants cannot read each other's data after refactor.
+
+## When to stop and ask
+
+- Replacing tenant middleware, auth middleware, or model routing.
+- Renaming realtime events consumed by frontend/mobile.
+- Changing upload access model or static file serving.
+- Migrating from per-tenant DB to shared-schema (or reverse).
+
+## References
+
+- ADRs: `Documents/decisions/`
+- Flows: `Documents/flows/`
+- Governance index: `Documents/standards/governance-index.md`

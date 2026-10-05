@@ -1,0 +1,39 @@
+---
+description: Augmentik theming, CSS tokens, dark/light mode, and mobile color palette (critical)
+alwaysApply: true
+---
+
+# Theme Rules
+
+Reference: `Documents/decisions/theme-engine.md`
+
+## Stack
+
+Tailwind + Metronic demo1 layout + Augmentik theme CSS + Shadcn (`@/components/ui/*`).
+
+Import order lives in `Project-X-Frontend/src/styles/globals.css`.
+
+## Token conventions
+
+- Dark tokens: `--ax-bg-main`, `--ax-accent-blue`, etc. scoped to `.dark` / `html.dark`.
+- Light mode: `html.light` hybrid (sidebar may stay dark per `augmentik-light-theme.css`).
+- Shadcn HSL vars in `shadcn.ui.css` map to Augmentik tokens.
+- Module-specific overrides: `messages-dark-theme.css`, `ax-popup-dark-theme.css`.
+- Default theme mode: `dark` (`settings.config.js`).
+
+## React Native
+
+- Import `{ colors } from '../theme/colors'` — no CSS variables in RN.
+- Keep mobile palette aligned with portal dark tokens; don't duplicate ad-hoc hex values.
+
+## Do's
+
+- Add new surface colors as `--ax-*` in augmentik theme files, then wire through `shadcn.ui.css` if Shadcn components need them.
+- Use `ThemeHandler` in `App.jsx` to toggle `html.dark` / `html.light`.
+- Scope route-specific overrides (e.g. public interview pages skip global theme handler).
+
+## Don'ts
+
+- Don't add global unscoped color rules that affect both `.dark` and `.light`.
+- Don't hardcode hex in new frontend components when a `--ax-*` or Shadcn token exists.
+- Don't break light theme when editing dark-only rules.

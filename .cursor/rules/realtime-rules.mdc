@@ -1,0 +1,65 @@
+---
+description: Socket.IO auth, rooms, event naming, and client subscription patterns
+globs: Project-X-Backend/src/services/realtime.service.js,Project-X-Frontend/src/providers/RealtimeProvider.jsx,Project-X-Frontend/src/hooks/**,Project-X-Mobile/src/**
+alwaysApply: false
+---
+
+# Realtime Rules
+
+Reference: `Project-X-Backend/src/services/realtime.service.js`, `Documents/decisions/notification-engine.md`
+
+## Server
+
+- Socket paths: `/realtime/socket.io`, `/api/realtime/socket.io`.
+- All connections pass `authenticateSocket` — JWT from cookie, auth payload, or Bearer; same tenant policy as HTTP.
+- Handshake `tenantSubdomain` follows `TENANT_RESOLUTION.md` (header/host mismatch → reject).
+- Store `userId`, `role`, `tenantDbName` on `socket.data` after auth.
+
+## Room naming
+
+| Room | Pattern |
+|------|---------|
+| User (legacy fallback) | `user:{userId}` |
+| Tenant user | `tenant:{tenantDbName}:user:{userId}` |
+| Tenant broadcast | `tenant:{tenantDbName}` |
+| Role | `tenant:{tenantDbName}:role:{roleId}` |
+| Conversation | `tenant:{tenantDbName}:conv:{conversationId}` |
+
+Prefer tenant-scoped rooms. Pass `{ tenantDbName }` in emit options when outside HTTP context.
+
+## Event naming
+
+Use `domain.action` lowercase dot notation:
+
+- `notification.created`
+- `task.status.changed`
+- `timeEntry.changed`
+- `chat.message.created`
+- `chat.conversation.deleted`
+- `interview.conversation.created`
+
+New events must follow this pattern. Do not rename existing events without refactor-safety review.
+
+## Emit helpers
+
+Use `emitToUser`, `emitToTenant`, `emitToRole`, `emitToConversation` from `realtime.service.js` — never raw `io.emit` to all clients.
+
+## Frontend / mobile
+
+- Subscribe via `useRealtimeEvent(event, handler, enabled)` from `RealtimeProvider`.
+- Disable polling (`refetchInterval`) when realtime is connected.
+- Guard handlers: check `enabled && !!currentUser?._id`.
+- Invalidate specific React Query keys — avoid full cache clears.
+- Clean up: `useRealtimeEvent` must unregister on unmount (provider handles this).
+
+## Do's
+
+- Verify conversation membership before `chat:join` room joins.
+- Limit `chat:join` batch size (max 200 IDs).
+- Log auth failures with `[Realtime]` prefix when debugging.
+
+## Don'ts
+
+- Don't emit tenant-wide events without `tenantDbName`.
+- Don't subscribe to the same event multiple times in one component tree.
+- Don't add socket endpoints that skip tenant validation.

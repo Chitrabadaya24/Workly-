@@ -1,0 +1,48 @@
+---
+description: MongoDB tenant connections, model routing, and query conventions (scoped)
+globs: Project-X-Backend/src/services/tenant-connection-manager.service.js,Project-X-Backend/src/services/tenant-model-routing.service.js,Project-X-Backend/src/services/tenant-request-context.service.js,Project-X-Backend/src/utils/tenant-db.util.js,Project-X-Backend/src/modules/**/model/**,Project-X-Backend/src/modules/**/*.model.js
+alwaysApply: false
+---
+
+# Database Rules
+
+Reference: `Documents/decisions/tenant-resolution-strategy.md`, `Project-X-Backend/TENANT_RESOLUTION.md`
+
+## Architecture
+
+- **Root connection**: shared Mongo cluster; tenant data in separate DBs via `useDb(dbName)`.
+- **Registry models** (root only): `Tenant`, `TenantPayment`, `SupportFeedback`.
+- **Tenant models**: everything else — auto-routed via `tenant-model-routing.service.js` patch.
+
+## Access patterns
+
+```javascript
+// HTTP handlers — context already set by middleware
+getTenantDbNameOrThrow(req);
+
+// Services / jobs / sockets — explicit or context
+getTenantDbNameFromContext();
+getTenantModel(tenantDbName, 'ModelName', schema, 'collection_name');
+```
+
+- Use `getTenantModel` / `getTenantModelSync` from `tenant-connection-manager.service.js`.
+- `runWithTenantContext(tenantDbName, next)` wraps async work outside HTTP.
+
+## Query conventions
+
+- Use `.lean()` for read-only list/detail responses.
+- Use `.select()` to limit fields on large documents.
+- Define indexes in schemas for frequently queried fields (reminders, notifications).
+- Populate only needed refs — avoid deep populate chains.
+
+## Do's
+
+- Pass `tenantDbName` explicitly in schedulers, push jobs, and socket handlers.
+- Validate tenant DB exists via connection ping before queries.
+- Use `asyncHandler` in controllers — let `ApiError` propagate.
+
+## Don'ts
+
+- Don't query tenant collections on the root connection.
+- Don't bypass model routing by hardcoding root `mongoose.model()` in tenant services.
+- Don't return full Mongoose documents when `.lean()` suffices.

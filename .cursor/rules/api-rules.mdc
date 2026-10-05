@@ -1,0 +1,49 @@
+---
+description: REST API conventions, ApiResponse/ApiError, routes, and client unwrap (scoped)
+globs: Project-X-Backend/src/app.js,Project-X-Backend/src/utils/Api*.js,Project-X-Backend/src/middlewares/errorHandler.middleware.js,Project-X-Backend/src/modules/**/*.routes.js,Project-X-Backend/src/modules/**/*.controller.js,Project-X-Mobile/src/api/**,Project-X-Frontend/src/pages/**
+alwaysApply: false
+---
+
+# API Rules
+
+## Backend
+
+- All REST routes mount under `/api/v1` (e.g. `/api/v1/tasks`, `/api/v1/users`).
+- Route style: kebab paths with verb in path (`create-task`, `update-task/:id`, `task-detail/:id`).
+- Wrap controllers with `asyncHandler`.
+- Protect routes with `router.use(VerifyJwt)` in route files.
+- Validation: Joi schemas in controllers.
+
+## Response shape
+
+Success — `new ApiResponse(statusCode, data, message)`:
+
+```json
+{ "statusCode": 200, "data": {}, "message": "Success", "success": true }
+```
+
+Errors — `throw new ApiError(statusCode, message)` → `{ success: false, message, errors }`.
+
+Some legacy endpoints return `{ data, message }` only — check before assuming nested `data`.
+
+## Clients
+
+- **Frontend**: `const API_BASE_URL = import.meta.env.VITE_APP_API_URL`; direct `axios` calls (no single API layer).
+- Read errors from `error.response.data.message` for toasts.
+- **Mobile**: shared `apiClient` + `unwrapData`:
+
+```javascript
+const unwrapData = (response) => response?.data?.data ?? response?.data;
+```
+
+## Do's
+
+- Use stable `message` strings in `ApiError` for client toasts.
+- Pass `tenantDbName` when querying tenant-scoped data.
+- Set `EXPO_PUBLIC_API_URL` without trailing `/api` (avoid `/api/api/v1`).
+
+## Don'ts
+
+- Don't return raw Mongoose docs without considering tenant connection.
+- Don't double-prefix `/api` in env URLs.
+- Don't add unauthenticated routes without explicit review.

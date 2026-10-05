@@ -1,0 +1,52 @@
+---
+description: Cron jobs, background tasks, reminders, and tenant-scoped batch processing
+globs: Project-X-Backend/src/services/scheduler.service.js,Project-X-Backend/src/services/notification.service.js,Project-X-Backend/src/services/expo-push.service.js,Project-X-Backend/src/scripts/**
+alwaysApply: false
+---
+
+# Scheduler & Background Job Rules
+
+Reference: `Documents/decisions/notification-engine.md`, `Documents/REMINDER_SETUP.md`
+
+## Core requirements
+
+1. **Idempotent** — Safe to re-run; use last-sent timestamps, dedup keys, or status flags.
+2. **Tenant context** — Wrap per-tenant work in `runWithTenantContext(tenantDbName, async () => { ... })`.
+3. **Explicit `tenantDbName`** — Pass to push/email/notification helpers; AsyncLocalStorage is empty in cron.
+4. **Skip inactive** — Filter deleted users (`notDeletedQuery`), inactive devices, expired tokens.
+5. **Log failures** — `console.error('[Scheduler] ...')`; never crash the cron loop.
+6. **No duplicate notifications** — De-dupe by notification `_id`, reminder `lastSentAt`, or deliverable recipient checks.
+
+## Performance
+
+- Iterate tenants from `TenantService.listTenants()` — don't assume single-tenant.
+- Avoid sequential `await` over large recipient lists; batch where possible.
+- Keep minute-level cron (`* * * * *`) fast — defer heavy work or use separate schedules.
+- Use `.lean()` + `.select()` in reminder/notification queries.
+
+## Retry safety
+
+- Catch errors per tenant/reminder — one failure must not block others.
+- Don't increment sent-count until delivery succeeds (or use compensating rollback).
+- Push/email failures must not throw from primary domain actions (task CRUD).
+
+## Existing jobs (reference)
+
+| Job | Schedule | Notes |
+|-----|----------|-------|
+| Reminders | Every minute | `checkAndSendReminders` |
+| Schedule notifications | Every minute | `checkAndSendScheduleNotifications` |
+| Stale heartbeat hold | Every minute | Per-tenant auto-hold |
+| Resource embeddings | Daily cron | `RESOURCE_EMBED_CRON` env |
+
+## Do's
+
+- Use `resolveDeliverableRecipients` before bulk sends.
+- Re-read runtime config when AI service URL may change.
+- Add new crons with guard flag (`isRunning`) to prevent double-start.
+
+## Don'ts
+
+- Don't run tenant queries on root connection without `runWithTenantContext`.
+- Don't send push without `EXPO_ACCESS_TOKEN` and valid tenant DB.
+- Don't block HTTP requests waiting for cron completion.

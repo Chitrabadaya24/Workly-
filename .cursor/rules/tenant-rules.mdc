@@ -1,0 +1,41 @@
+---
+description: Multi-tenant resolution, isolation, and cross-app tenant headers (critical)
+alwaysApply: true
+---
+
+# Tenant Rules
+
+Reference: `Project-X-Backend/TENANT_RESOLUTION.md`, `Documents/decisions/tenant-resolution-strategy.md`
+
+## Isolation model
+
+- Each tenant uses a separate MongoDB database via `useDb` — not row-level `tenantId` in a shared DB.
+- After `resolveTenantContext`, services use `getTenantDbNameFromContext()` or pass `tenantDbName` explicitly in jobs/sockets.
+- Controllers call `getTenantDbNameOrThrow(req)` for tenant-scoped operations.
+
+## Resolution order
+
+1. `Host` subdomain (first label when hostname has ≥3 parts and label is not reserved)
+2. `x-tenant-subdomain` header (only on trusted/reserved API hosts)
+3. httpOnly `TenantDbName` cookie
+
+**Mismatch = 403**: header vs host, or cookie vs resolved DB.
+
+## Client conventions
+
+- Header name is always lowercase `x-tenant-subdomain`.
+- **Web**: derive subdomain from `window.location.hostname`, then auth object, then `VITE_APP_TENANT_SUBDOMAIN` (dev only).
+- **Mobile**: user-entered org subdomain stored in SecureStore; always send header on fixed API host (`api.*` is reserved).
+- **WebView portal**: use `https://{subdomain}.{PORTAL_BASE_DOMAIN}`, never the API host.
+
+## Do's
+
+- Use `runWithTenantContext(req.tenantDbName, next)` after tenant middleware.
+- Use `TenantService.resolveBySubdomain` for DB handles.
+- List non-reserved gateway hosts in `TENANT_SUBDOMAIN_TRUSTED_API_HOSTS`.
+
+## Don'ts
+
+- Don't trust `x-tenant-subdomain` on arbitrary hosts without trusted-host config.
+- Don't query tenant data without resolved `tenantDbName` on protected routes.
+- Don't disable cookie mismatch checks for convenience.

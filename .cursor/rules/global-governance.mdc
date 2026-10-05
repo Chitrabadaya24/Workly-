@@ -1,0 +1,32 @@
+---
+description: Foundational non-negotiable rules for all ProjectX / Augmentik work
+alwaysApply: true
+---
+
+# Global Governance
+
+ProjectX is a production multi-tenant ERP (MERN + React Native). These rules override convenience.
+
+## Non-negotiables
+
+1. **Tenant isolation** — Never query or mutate tenant data without resolved `tenantDbName`. See `tenant-rules.mdc`, ADR `Documents/decisions/tenant-resolution-strategy.md`.
+2. **Auth on protected surfaces** — Never bypass `VerifyJwt`, `RequireAuth`, or socket `authenticateSocket`. See `auth-rules.mdc`.
+3. **Upload security** — Never serve uploads publicly in production. All file reads require JWT. See `file-access-rules.mdc`.
+4. **Design tokens** — Never hardcode colors in UI. Use `--ax-*`, Shadcn vars, or `colors.js`. See `theme-rules.mdc`.
+5. **Cross-platform parity** — Web, mobile, and shared API changes must stay compatible unless explicitly scoped.
+6. **Backward compatibility** — Preserve existing auth, tenant resolution, session handoff, and API contracts unless explicitly instructed to break them.
+7. **Reuse before reinvent** — Extend `JWTProvider`, `AuthContext`, `httpClient`, `setupAxios`, tenant middleware, and existing modules before new parallel stacks.
+8. **Validate protected APIs** — Auth + tenant + permissions (role/section) on every protected route.
+9. **Modular scalability** — Prefer tenant-scoped services, shared utilities, and incremental changes over monolithic rewrites.
+10. **Forbidden patterns** — See `forbidden-patterns.mdc`. If a change matches a forbidden pattern, stop and redesign.
+
+## Before major changes
+
+Run impact check per `refactor-safety.mdc`: tenant, mobile, auth, notifications, realtime, backward compatibility.
+
+## Rule hierarchy
+
+| Priority | Rules |
+|----------|-------|
+| Always on | `global-governance`, `forbidden-patterns`, `tenant-rules`, `auth-rules`, `security-rules`, `file-access-rules`, `theme-rules` |
+| Scoped | `db-rules`, `api-rules`, `realtime-rules`, `scheduler-rules`, `notification-rules`, `mobile-rules`, `ui-rules`, `performance-rules`, `refactor-safety` |

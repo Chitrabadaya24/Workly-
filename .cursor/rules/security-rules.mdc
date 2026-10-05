@@ -1,0 +1,41 @@
+---
+description: Secrets, env vars, credentials, cookies, and commit safety (critical)
+alwaysApply: true
+---
+
+# Security Rules
+
+## Secrets placement
+
+| Location | Allowed |
+|----------|---------|
+| `Project-X-Backend/.env` | JWT secrets, Mongo URI, SMTP, OAuth, service account paths |
+| `Project-X-Frontend/.env` | `VITE_*` public config only (API URL, app name) |
+| `Project-X-Mobile/.env` | `EXPO_PUBLIC_*` public config only |
+| `Project-X-Backend/credentials/` | Google tokens, SMTP certs (gitignored) |
+
+Never put `ACCESS_TOKEN_SECRET`, Mongo URI, or service account JSON in client env.
+
+## Git safety
+
+- Copy from `.env.sample` / `.env.example` — never commit `.env` files.
+- Backend `.gitignore` blocks most `*.json` — Firebase admin SDK and backup keys must not land in repo root.
+- If `*adminsdk*.json` or `*backup.json` appear in workspace, do not stage or commit them.
+
+## Runtime
+
+- Tenant cookie mismatch checks must stay enabled in production.
+- Upload security: see `file-access-rules.mdc` and ADR `Documents/decisions/upload-security-strategy.md`.
+- Use EAS secrets for FCM credentials on mobile builds.
+
+## Do's
+
+- Reference credentials via env paths (e.g. `GOOGLE_APPLICATION_CREDENTIALS`).
+- Rotate keys if service account JSON was ever committed.
+- Use production cookie flags: `secure` + `sameSite: 'none'`.
+
+## Don'ts
+
+- Don't commit `.env`, admin SDK JSON, or backup credential files.
+- Don't disable tenant isolation checks for debugging in production.
+- Don't embed API secrets in frontend or mobile bundles.

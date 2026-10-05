@@ -1,0 +1,46 @@
+---
+description: Frontend UI patterns, Shadcn, routing, and role-based access (scoped)
+globs: Project-X-Frontend/src/pages/**,Project-X-Frontend/src/components/**,Project-X-Frontend/src/layouts/**,Project-X-Frontend/src/routing/**,Project-X-Frontend/src/providers/**,Project-X-Frontend/src/utils/roleAccess.js,Project-X-Frontend/src/constants/**
+alwaysApply: false
+---
+
+# UI Rules
+
+## Structure
+
+- Import alias: `@/` → `src/` (Vite).
+- Pages: `src/pages/{domain}/{listing|detail}/` with `blocks/` subcomponents and barrel `index.js`.
+- Shell: Metronic demo1 layout (`src/layouts/demo1/`) — sidebar, header, content area.
+- Product pages live under `src/pages/`, not Metronic demo copies.
+
+## Components
+
+- Shadcn primitives in `@/components/ui/*` (`button`, `input`, `dialog`, etc.) — reuse before raw HTML.
+- Lists: `DataGrid*` components + React Query (providers in `ProvidersWrapper.jsx`).
+- Toasts: `sonner` (`toast.error`, `toast.success`).
+- Motion: `@/motion` (`RouteTransitionProvider`, skeletons for loading states).
+- Auth loading: `ScreenLoader` during bootstrap.
+
+## Routing & access
+
+- Wrap protected routes in `RequireAuth`.
+- Feature gates: `<RoleRoute section={SECTIONS.X}>` using `roleAccess.js`.
+- New sections: add to `@/constants/portalSections` and path rules in `roleAccess.js`.
+
+## API calls in pages
+
+- Use `import.meta.env.VITE_APP_API_URL` with axios (via global `setupAxios`).
+- Show user-facing errors from `error.response.data.message`.
+- Shared helpers: `showTaskApiError`, `getTaskApiErrorMessage` pattern for consistent UX.
+
+## Do's
+
+- Follow existing page/block folder conventions when adding features.
+- Use theme tokens (`--ax-*`, Shadcn vars) — `theme-rules.mdc` is globally enforced.
+- Keep provider order consistent in `ProvidersWrapper.jsx`.
+
+## Don'ts
+
+- Don't add routes without `RequireAuth` / `RoleRoute` where applicable.
+- Don't import Metronic demo pages as product code.
+- Don't hardcode colors — use design tokens.

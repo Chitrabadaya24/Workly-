@@ -1,0 +1,50 @@
+---
+description: Expo/React Native patterns, env, API client, portal WebView (scoped)
+globs: Project-X-Mobile/**,!Project-X-Mobile/node_modules/**
+alwaysApply: false
+---
+
+# Mobile Rules
+
+Reference: `Project-X-Mobile/README.md`, `Documents/MOBILE_WEB_SESSION_IMPLEMENTATION.md`
+
+## Environment
+
+- Client config uses `EXPO_PUBLIC_*` prefix only.
+- Copy from `.env.example`; leave `EXPO_PUBLIC_TENANT_SUBDOMAIN` empty in production builds.
+- Separate URLs: `EXPO_PUBLIC_API_URL` (REST) and `EXPO_PUBLIC_REALTIME_URL` (sockets).
+
+## API client
+
+- Use shared `apiClient` from `src/api/httpClient.js` — don't create one-off axios instances.
+- Auth state via `setApiAuthContext` + `AuthContext`; all authenticated calls go through the refresh interceptor.
+- Always send `x-tenant-subdomain` and device identity headers.
+
+## Org login & portal
+
+- User supplies org subdomain at sign-in; store in SecureStore, not AsyncStorage.
+- Open portal WebView at `resolvePortalOrigin(tenantSubdomain)` + `/mobile-entry?token=&tenant=&handoff=`.
+- Never point WebView at the API host.
+
+## Security
+
+- Tokens, tenant, and PIN/biometric lock state in Expo SecureStore (`secureSession.js`).
+- FCM service account via EAS secrets — not bundled in repo.
+
+## Structure
+
+- Navigation: `AppNavigator.js` stack/tabs.
+- Feature screens under `src/screens/` and `src/messaging/`.
+- Theme: `src/theme/colors.js` mirroring portal dark palette.
+
+## Do's
+
+- Follow handoff doc parity for backend routes (`/users/mobile-web-session/*`).
+- Use `unwrapData` for API responses.
+- Match backend tenant header conventions exactly.
+
+## Don'ts
+
+- Don't bypass `AuthContext` refresh flow for authenticated calls.
+- Don't bake tenant subdomain into production builds.
+- Don't use AsyncStorage for tokens or session data.

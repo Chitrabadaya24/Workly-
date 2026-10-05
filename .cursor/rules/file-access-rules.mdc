@@ -1,0 +1,49 @@
+---
+description: Upload, download, static serving, and authenticated file access (critical)
+alwaysApply: true
+---
+
+# File Access Rules
+
+Reference: `Documents/decisions/upload-security-strategy.md`
+
+## Storage layout
+
+Root: `config.uploadsDir` (from `appConfig.js`).
+
+| Category | Path | Multer export |
+|----------|------|---------------|
+| documents | `uploads/documents/` | `upload` |
+| knowledge-docs | `uploads/knowledge-docs/` | `uploadKnowledgeDocs` |
+| temp | `uploads/temp/` | `uploadSheet` |
+| social-graphics | `uploads/social-graphics/` | (feature-specific) |
+
+## Access patterns
+
+- **Authenticated API**: `GET /api/v1/files/:category/:filename` — `VerifyJwt` required.
+- **Documents module**: `POST /upload-document`, `GET /download/:filename` — JWT protected.
+- **Static `/uploads/`**: served in dev; production should proxy file reads through `/api/v1/files/`.
+
+## Security
+
+- Validate category against `ALLOWED_CATEGORIES` set.
+- Sanitize filenames: `path.basename`, reject `..` traversal.
+- Set `Cache-Control: private` on authenticated file responses.
+- CORS/ORB headers on static uploads for cross-origin images.
+
+## Clients
+
+- Frontend: use authenticated file URLs in production, not raw `/uploads/` paths.
+- Mobile: resolve upload URLs via `resolveUploadUrl.js` against API base.
+
+## Do's
+
+- Use existing multer middleware exports — don't create ad-hoc disk storage.
+- Protect all download/serve routes with `VerifyJwt`.
+- Store unique filenames (`timestamp-random-originalname`).
+
+## Don'ts
+
+- Don't expose upload directories without auth in production.
+- Don't accept arbitrary category paths outside the allowed set.
+- Don't trust client-provided paths for filesystem reads.
